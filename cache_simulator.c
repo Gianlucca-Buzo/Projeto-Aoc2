@@ -14,10 +14,9 @@ typedef struct dado {
 
 //struct que representa a cache
 typedef struct cache {
-	int valor[10000]; //vetor que representa a quantidade de palavras em cada bloco
+	int valor[100]; //vetor que representa a quantidade de palavras em cada bloco
 	int tag, validade;
 }cache;
-
 
 int main(int argc, char const *argv[]){
   
@@ -53,7 +52,7 @@ int main(int argc, char const *argv[]){
 	p = bsize/4;
 
 	dados endereco[tam]; //cria um endereço para cada dado lido
-	char valorbinario[32]; //armazena o valor binário dos dados lidos no arquivo
+	int valorbinario[32]; //armazena o valor binário dos dados lidos no arquivo
 	cache memoria[k][l];
 
 	//calcula quantos bits são usados para tag, indice e offset 
@@ -70,8 +69,21 @@ int main(int argc, char const *argv[]){
 
 	//inicia o laço para cada dado lido no arquivo
 	for (int t = 0; t < tam ; ++t){
-		//separa os bits de tag, índice e offset 
-		itoa(valores[t],valorbinario,2);
+
+		//transforma para binário
+		int aux;
+	    for (aux = 32; aux >= 0; aux--) {
+	        if (valores[t] % 2 == 0) {
+	            valorbinario[aux] = 0;
+	            valores[t] = valores[t] / 2;
+	        }
+	        else {
+	            valorbinario[aux] = 1;
+	            valores[t]= valores[t] / 2;
+	        }
+	    }
+
+	    //separa os bits de tag, índice e offset 
 		for (i=0; i< ntag; i++){
 			endereco[t].tag[i] = valorbinario[i];
 		}
