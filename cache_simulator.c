@@ -14,20 +14,19 @@ typedef struct dado {
 
 //struct que representa a cache
 typedef struct memoria {
-	char valor[32][10000]; //segundo parâmetro é a quantidade de palavras que dá pra colocar no bloco 
-	char tag[32], indice[32];
-	int validade;
+	int valor[MAX]; //vetor que representa a quantidade de palavras em cada bloco
+	int tag, validade;
 }cache;
 
-//int convertebinario();
 
 int main(int argc, char const *argv[]){
   
-	int nsets, bsize, assoc, flag_saida,valores[MAX],j=0,tam=0, nindice, noffset, ntag, k, l, i, indicecache,s,dec=0;
+	int nsets, bsize, assoc, flag_saida,valores[MAX],j=0,tam=0, nindice, noffset, ntag, k, l, i, indicecache,s, random, random2, cont, p;
 	float hit=0,missConf=0,missCap=0,missComp=0;
 	float txHit, txMiss, txComp, txCap, txConf;
 	char *subs,file[8]; 
 	FILE *entrada;
+	
 	//atribuições iniciais
 	nsets = atoi (argv[1]);
 	bsize = atoi (argv[2]);
@@ -36,6 +35,7 @@ int main(int argc, char const *argv[]){
 	flag_saida = atoi (argv [5]); 
 	entrada = fopen(argv[6],"rb");
 	
+	//faz a leitura do arquivo
 	if(entrada == NULL) {
         printf("Arquivo inválido. \n");
         return 1;
@@ -50,89 +50,106 @@ int main(int argc, char const *argv[]){
 
 	k = nsets/assoc;
 	l = assoc;
+	p = bsize/4;
 
-	dados endereco[tam];
-	char valorbinario[32];
-	//cache memoriaPrincipal[k][l];
+	dados endereco[tam]; //cria um endereço para cada dado lido
+	char valorbinario[32]; //armazena o valor binário dos dados lidos no arquivo
+	cache memoria[k][l];
 
+	//calcula quantos bits são usados para tag, indice e offset 
 	noffset = log2(bsize);
 	nindice = log2(nsets);
 	ntag = 32 - noffset - nindice;
 
+	//inicializa os bits de validade com 0
+	for(i=0; i < k ;i++){
+		for(int t=0;t < l;t++){
+			memoria[i][t].validade = 0;
+		}
+	} 
+
+	//inicia o laço para cada dado lido no arquivo
 	for (int t = 0; t < tam ; ++t){
+		//separa os bits de tag, índice e offset 
 		itoa(valores[t],valorbinario,2);
-		dec=0;
 		for (i=0; i< ntag; i++){
 			endereco[t].tag[i] = valorbinario[i];
-		}/*
+		}
 		i++; 
 		for (j=0;j< nindice; j++)
 			endereco[t].indice[j] = valorbinario[j+i];
 		for (int m=0;m<noffset;m++)
 			endereco[t].offset[m] = valorbinario[m+j];
-			*/
-			s= strlen(endereco[t].tag);
-			for (int i = s-1; i >=0; i--)
-			{
-				if((endereco[t].tag[i]) == '1'){
-					dec += pow(2,s-1-i);
-				}
+		
+		//transforma de binário para decimal 
+		s= strlen(endereco[t].tag);
+		endereco[t].tagfinal = 0;
+		endereco[t].indicefinal = 0;
+		endereco[t].offsetfinal = 0;
+		for (int i = s-1; i >=0; i--){
+			if((endereco[t].tag[i]) == '1'){
+				endereco[t].tagfinal += pow(2,s-1-i);
 			}
-			printf("\nbinario: %s decimal: %d ",endereco[t].tag,dec);
-		/*itoa(endereco[t].tag, endereco[t].tagfinal, 10);
-		itoa(endereco[t].indice, endereco[t].indicefinal, 10);
-		itoa(endereco[t].offset, endereco[t].offsetfinal, 10);
-		indicecache = endereco[t].indicefinal % k;
-		*/
-		/*
-			for (i=0;i<j;i++){
-				for (int n=0; n<p;n++){
-					if (matriz[indice][i][n] == dados[t]){
+		}
+
+		s= strlen(endereco[t].indice);
+		for (int i = s-1; i >=0; i--){
+			if((endereco[t].indice[i]) == '1'){
+				endereco[t].indicefinal += pow(2,s-1-i);
+			}
+		}
+
+		s= strlen(endereco[t].offset);
+		for (int i = s-1; i >=0; i--){
+			if((endereco[t].offset[i]) == '1'){
+				endereco[t].offsetfinal += pow(2,s-1-i);
+			}
+		}
+
+		//calcula o bloco que o dado é mapeado
+		indicecache = endereco[t].indicefinal % k; 
+
+			for (i=0;i<l;i++){
+					if (memoria[indicecache][i].tag == endereco[t].tagfinal){
 						hit++;
-						aux++;
 						break;
 					}
 					else {
-						if(matriz[indice][i][n] == -1){
-							matriz[indice][i][n] = dados[t];
+						if(memoria[indicecache][i].validade == 0){
+							random = rand() % p;
+							memoria[indicecache][i].valor[random] = valores[t]; //salva o dado em umas das palavras do bloco
+							memoria[indicecache][i].validade = 1;
 							missComp++; //presente em qualquer tipo de cache 
-							aux++;
 							break;
 						}
 						else{
-							if(i <= j  && n <= p ){
-								random = rand() % j;
-								random2 = (rand() % p)+1;
-								matriz[indice][random][random2] = dados[t];
-							if (j==1)
+							if(i <= l){
+								random = rand() % p;
+								random2 = rand() % l;
+								memoria[indicecache][random2].valor[random] = valores[t]; //faz a substituição randômica
+							if (l==1)
 								missConf++; //cache com mapeamento direto só tem miss de conflito
 							else {
 								if  (k==1)
 									missCap++; //cache totalmente associativa só tem miss de capacidade 
 								else{
 									missConf++;
-									int cont = 0;
+									cont = 0;
 									for (int i = 0; i < k; ++i){
-										for (int m = 0; m < j; ++m){
-											for (int n =0; n<p;n++){
-												if(matriz[i][m][n]==-1)
+										for (int m = 0; m < l; ++m){
+												if(memoria[i][m].validade==0)
 													cont++;
 											}
 										}
 									} //confere se a cache está completamente cheia
 									if (cont==0)
-										missCap++; //soma no miss de Capacidade só se a cache estiver cheia
+										missCap++; //soma no miss de Capacidade só se todos os bits de validade estiverem em 1
 								}
 							}
 						}
 					}
 				}
-					
-				}
-				if (aux==1)
-					break;
-			}*/
-		 }
+			}
 
 	//calcula as taxas de miss e hit
 	int missTotal = missCap + missConf + missComp;
