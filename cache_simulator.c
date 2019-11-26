@@ -13,7 +13,7 @@ typedef struct dado {
 }dados;
 
 //struct que representa a cache
-typedef struct memoria {
+typedef struct cache {
 	int valor[MAX]; //vetor que representa a quantidade de palavras em cada bloco
 	int tag, validade;
 }cache;
